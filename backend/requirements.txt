@@ -1,0 +1,21 @@
+# Flask Backend
+flask==3.0.0
+flask-cors==4.0.1
+python-dotenv==1.0.1
+
+# Google APIs
+google-api-python-client==2.108.0
+google-generativeai==0.3.2
+
+# Data Processing - UPDATED for Python 3.13
+pandas>=2.2.0
+numpy>=1.26.0
+
+# NLP and ML - UPDATED for Python 3.13
+nltk==3.9.1
+scikit-learn>=1.5.0
+sentence-transformers==3.1.1
+keybert==0.8.5
+
+# Additional Dependencies
+scipy>=1.13.0
