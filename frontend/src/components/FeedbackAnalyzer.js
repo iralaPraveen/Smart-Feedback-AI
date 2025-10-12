@@ -1,410 +1,321 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import { 
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, 
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+  ResponsiveContainer 
 } from 'recharts';
-import { 
-  FaChartBar, FaSearch, FaSpinner, FaCheckCircle, 
-  FaExclamationTriangle, FaFileAlt, FaBrain, FaChartPie 
-} from 'react-icons/fa';
 import '../styles/FeedbackAnalyzer.css';
-import 'react-tabs/style/react-tabs.css';
 
 const FeedbackAnalyzer = () => {
   const [formData, setFormData] = useState({
     spreadsheetId: '',
-    rangeName: 'Sheet1!A:B'
+    rangeName: 'Sheet1!B:B'
   });
+  
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
-  const [error, setError] = useState('');
-
-  // Colors for charts
-  const COLORS = ['#4CAF50', '#F44336', '#FFC107', '#2196F3', '#9C27B0'];
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('summary'); // Changed default to 'summary'
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const extractSheetId = (url) => {
-    const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    return match ? match[1] : url;
-  };
-
-  const analyzeData = async () => {
-    if (!formData.spreadsheetId.trim()) {
-      setError('Please enter a Google Sheets ID or URL');
-      return;
-    }
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
-    setError('');
+    setError(null);
     setResults(null);
 
     try {
-      const sheetId = extractSheetId(formData.spreadsheetId);
       const response = await axios.post('http://localhost:8000/api/analyze-feedback', {
-        spreadsheet_id: sheetId,
+        spreadsheet_id: formData.spreadsheetId,
         range_name: formData.rangeName
       });
 
-      console.log('📊 Analysis Results:', response.data);
       setResults(response.data);
+      console.log('✅ Analysis complete:', response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Analysis failed');
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to analyze feedback';
+      setError(errorMessage);
       console.error('❌ Analysis error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Transform sentiment data for pie chart
-  const getSentimentPieData = () => {
-    if (!results?.sentiment_distribution) return [];
-    
-    return [
-      { name: 'Positive', value: results.sentiment_distribution.positive || 0, fill: '#4CAF50' },
-      { name: 'Negative', value: results.sentiment_distribution.negative || 0, fill: '#F44336' },
-      { name: 'Neutral', value: results.sentiment_distribution.neutral || 0, fill: '#FFC107' }
-    ].filter(item => item.value > 0);
-  };
-
-  // Transform themes data for bar chart
-  const getThemesBarData = () => {
+  const prepareThemeChartData = () => {
     if (!results?.key_themes) return [];
     
-    return Object.entries(results.key_themes).map(([name, count], index) => ({
-      name,
-      count,
-      fill: COLORS[index % COLORS.length]
-    }));
-  };
-
-  // Format sentiment description for display
-  const formatSentimentDescription = (text) => {
-    if (!text) return [];
-    
-    return text.split('\n').map((line, index) => {
-      if (line.trim().startsWith('##')) {
-        return <h4 key={index} className="section-header">{line.replace('##', '').trim()}</h4>;
-      } else if (line.trim().startsWith('-')) {
-        return <li key={index} className="bullet-point">{line.trim().substring(1)}</li>;
-      } else if (line.trim()) {
-        return <p key={index} className="description-text">{line.trim()}</p>;
-      }
-      return null;
-    }).filter(Boolean);
+    return Object.entries(results.key_themes)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([theme, count]) => ({
+        theme: theme.charAt(0).toUpperCase() + theme.slice(1),
+        mentions: count
+      }));
   };
 
   return (
     <div className="feedback-analyzer">
-      {/* Header */}
-      <div className="analyzer-header">
-        <div className="header-content">
-          <div className="header-icon">
-            <FaBrain />
-          </div>
-          <div>
-            <h1>🤖 AI Feedback Analyzer</h1>
-            <p>Transform Google Forms feedback into actionable insights with AI</p>
-          </div>
+      <div className="container">
+        {/* Header */}
+        <header className="header">
+          <h1>🤖 AI Feedback Analyzer</h1>
+          <p className="subtitle">Hybrid NLP + AI Analysis System</p>
+        </header>
+
+        {/* Input Form */}
+        <div className="input-section">
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="spreadsheetId">
+                📊 Google Sheet ID
+                <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="spreadsheetId"
+                name="spreadsheetId"
+                value={formData.spreadsheetId}
+                onChange={handleInputChange}
+                placeholder="Enter your Google Spreadsheet ID"
+                required
+                disabled={loading}
+              />
+              <small className="help-text">
+                Find this in your Google Sheet URL: docs.google.com/spreadsheets/d/<strong>[YOUR_SHEET_ID]</strong>/edit
+              </small>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="rangeName">
+                📍 Range (Optional)
+              </label>
+              <input
+                type="text"
+                id="rangeName"
+                name="rangeName"
+                value={formData.rangeName}
+                onChange={handleInputChange}
+                placeholder="Sheet1!B:B"
+                disabled={loading}
+              />
+              <small className="help-text">
+                Default: Sheet1!B:B (Column B only - feedback text)
+              </small>
+            </div>
+
+            <button 
+              type="submit" 
+              className="submit-button"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <span className="spinner"></span>
+                  Analyzing Feedback...
+                </>
+              ) : (
+                <>
+                  <span>🚀</span>
+                  Analyze Feedback
+                </>
+              )}
+            </button>
+          </form>
         </div>
-      </div>
 
-      {/* Input Section */}
-      <div className="input-section">
-        <div className="input-card">
-          <h2><FaSearch /> Analyze Your Feedback</h2>
-          <div className="form-group">
-            <label htmlFor="spreadsheetId">
-              Google Sheets URL or ID <span className="required">*</span>
-            </label>
-            <input
-              type="text"
-              id="spreadsheetId"
-              name="spreadsheetId"
-              className="form-input"
-              value={formData.spreadsheetId}
-              onChange={handleInputChange}
-              placeholder="https://docs.google.com/spreadsheets/d/your-sheet-id/edit"
-            />
-            <small className="help-text">
-              💡 Paste the full Google Sheets URL or just the sheet ID
-            </small>
+        {/* Error Message */}
+        {error && (
+          <div className="error-message">
+            <strong>⚠️ Error:</strong> {error}
           </div>
+        )}
 
-          <div className="form-group">
-            <label htmlFor="rangeName">Data Range (Optional)</label>
-            <input
-              type="text"
-              id="rangeName"
-              name="rangeName"
-              className="form-input"
-              value={formData.rangeName}
-              onChange={handleInputChange}
-              placeholder="Sheet1!A:B"
-            />
-          </div>
+        {/* Results Section */}
+        {results && results.success && (
+          <div className="results-section">
 
-          <button 
-            className={`analyze-button ${loading ? 'loading' : ''}`}
-            onClick={analyzeData}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <FaSpinner className="spinner" />
-                Analyzing Feedback...
-              </>
-            ) : (
-              <>
-                <FaBrain />
-                Analyze with AI
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="error-message">
-          <FaExclamationTriangle />
-          {error}
-        </div>
-      )}
-
-      {/* Results Section */}
-      {results && results.success && (
-        <div className="results-section">
-          {/* Statistics Overview */}
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">
-                <FaFileAlt />
-              </div>
-              <div className="stat-content">
-                <h3>{results.total_feedback || 0}</h3>
-                <p>Total Responses</p>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon success">
-                <FaCheckCircle />
-              </div>
-              <div className="stat-content">
-                <h3>{results.statistics?.positive_count || 0}</h3>
-                <p>Positive Feedback</p>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">
-                <FaChartBar />
-              </div>
-              <div className="stat-content">
-                <h3>{Object.keys(results.key_themes || {}).length}</h3>
-                <p>Key Themes</p>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">
-                <FaBrain />
-              </div>
-              <div className="stat-content">
-                <h3>{results.suggestions?.length || 0}</h3>
-                <p>AI Suggestions</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabbed Content */}
-          <Tabs className="analysis-tabs">
-            <TabList>
-              <Tab>📊 Overview</Tab>
-              <Tab>🥧 Sentiment Chart</Tab>
-              <Tab>📈 Themes Chart</Tab>
-              <Tab>💡 Suggestions</Tab>
-              <Tab>📝 AI Analysis</Tab>
-            </TabList>
-
-            {/* Overview Tab */}
-            <TabPanel>
-              <div className="analysis-card">
-                <h2><FaChartBar /> Analysis Overview</h2>
-                <div className="overview-content">
-                  <div className="summary-stats">
-                    <div className="stat-item">
-                      <strong>Total Feedback:</strong> {results.total_feedback}
-                    </div>
-                    <div className="stat-item">
-                      <strong>Analysis Date:</strong> {new Date(results.timestamp).toLocaleString()}
-                    </div>
-                    <div className="stat-item">
-                      <strong>AI Model:</strong> {results.metadata?.ai_model || 'Gemini AI'}
-                    </div>
-                  </div>
-
-                  {/* Mini Charts Side by Side */}
-                  <div className="mini-charts-grid">
-                    <div className="mini-chart">
-                      <h4>Sentiment Distribution</h4>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <PieChart>
-                          <Pie
-                            data={getSentimentPieData()}
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={60}
-                            fill="#8884d8"
-                            dataKey="value"
-                            label={({name, percent}) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {getSentimentPieData().map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    <div className="mini-chart">
-                      <h4>Top Themes</h4>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={getThemesBarData().slice(0, 4)}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="count" fill="#8884d8" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
+            {/* Statistics Cards */}
+            <div className="stats-grid">
+              <div className="stat-card total">
+                <div className="stat-icon">📊</div>
+                <div className="stat-content">
+                  <div className="stat-value">{results.total_feedback}</div>
+                  <div className="stat-label">Total Feedback</div>
                 </div>
               </div>
-            </TabPanel>
 
-            {/* Sentiment Chart Tab */}
-            <TabPanel>
-              <div className="analysis-card">
-                <h2><FaChartPie /> Sentiment Distribution</h2>
-                <div className="chart-container">
+              <div className="stat-card clusters">
+                <div className="stat-icon">🔍</div>
+                <div className="stat-content">
+                  <div className="stat-value">{results.statistics.clusters_found}</div>
+                  <div className="stat-label">Clusters Found</div>
+                </div>
+              </div>
+
+              <div className="stat-card themes">
+                <div className="stat-icon">🎯</div>
+                <div className="stat-content">
+                  <div className="stat-value">{results.statistics.themes_identified}</div>
+                  <div className="stat-label">Key Themes</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabs Navigation - REORDERED */}
+            <div className="tabs">
+              <button 
+                className={`tab ${activeTab === 'summary' ? 'active' : ''}`}
+                onClick={() => setActiveTab('summary')}
+              >
+                📝 AI Summary
+              </button>
+              <button 
+                className={`tab ${activeTab === 'suggestions' ? 'active' : ''}`}
+                onClick={() => setActiveTab('suggestions')}
+              >
+                💡 Recommendations
+              </button>
+              <button 
+                className={`tab ${activeTab === 'themes' ? 'active' : ''}`}
+                onClick={() => setActiveTab('themes')}
+              >
+                🎯 Themes Analysis
+              </button>
+              <button 
+                className={`tab ${activeTab === 'clusters' ? 'active' : ''}`}
+                onClick={() => setActiveTab('clusters')}
+              >
+                🔍 Cluster Details
+              </button>
+            </div>
+
+            {/* Tab Content - REORDERED */}
+            <div className="tab-content">
+              
+              {/* Summary Tab - NOW FIRST */}
+              {activeTab === 'summary' && (
+                <div className="summary-section">
+                  <h2>📝 Comprehensive AI Analysis</h2>
+                  <div className="summary-content">
+                    {results.summary.split('\n').map((paragraph, index) => {
+                      if (paragraph.trim().startsWith('##')) {
+                        return (
+                          <h3 key={index} className="summary-heading">
+                            {paragraph.replace(/##/g, '').trim()}
+                          </h3>
+                        );
+                      } else if (paragraph.trim()) {
+                        return (
+                          <p key={index} className="summary-paragraph">
+                            {paragraph.trim()}
+                          </p>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Suggestions Tab - NOW SECOND */}
+              {activeTab === 'suggestions' && (
+                <div className="suggestions-section">
+                  <h2>💡 AI-Generated Recommendations</h2>
+                  <p className="section-description">
+                    Specific, actionable recommendations based on customer feedback analysis
+                  </p>
+                  <div className="suggestions-list">
+                    {results.suggestions.map((suggestion, index) => {
+                      // Split suggestion into lines
+                      const lines = suggestion.split('\n').filter(line => line.trim());
+                      const title = lines[0] || suggestion;
+                      const description = lines.slice(1).join(' ') || '';
+                      
+                      return (
+                        <div key={index} className="suggestion-item-detailed">
+                          <div className="suggestion-header">
+                            <span className="suggestion-number">{index + 1}</span>
+                            <h3 className="suggestion-title">{title}</h3>
+                          </div>
+                          {description && (
+                            <p className="suggestion-description">{description}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Themes Tab - NOW THIRD */}
+              {activeTab === 'themes' && (
+                <div className="themes-section">
+                  <h2>🎯 Top Themes Identified</h2>
                   <ResponsiveContainer width="100%" height={400}>
-                    <PieChart>
-                      <Pie
-                        data={getSentimentPieData()}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({name, percent, value}) => 
-                          `${name}: ${value}% (${(percent * 100).toFixed(1)}%)`
-                        }
-                        outerRadius={120}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {getSentimentPieData().map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Sentiment Description */}
-                <div className="sentiment-description">
-                  <h3>📝 Sentiment Analysis Description</h3>
-                  <div className="description-content">
-                    {formatSentimentDescription(results.sentiment_description)}
-                  </div>
-                </div>
-              </div>
-            </TabPanel>
-
-            {/* Themes Chart Tab */}
-            <TabPanel>
-              <div className="analysis-card">
-                <h2><FaChartBar /> Key Themes Analysis</h2>
-                <div className="chart-container">
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart
-                      data={getThemesBarData()}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
+                    <BarChart data={prepareThemeChartData()}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
+                      <XAxis dataKey="theme" angle={-45} textAnchor="end" height={100} />
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="count" fill="#8884d8" />
+                      <Bar dataKey="mentions" fill="#667eea" />
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
-
-                <div className="themes-summary">
-                  <h3>🎯 Theme Insights</h3>
+                  
                   <div className="themes-list">
-                    {Object.entries(results.key_themes || {}).map(([theme, count]) => (
-                      <div key={theme} className="theme-item">
-                        <span className="theme-name">{theme}</span>
-                        <span className="theme-count">{count} mentions</span>
+                    <h3>📋 Theme Details</h3>
+                    <div className="theme-items">
+                      {Object.entries(results.key_themes)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([theme, count]) => (
+                          <div key={theme} className="theme-item">
+                            <span className="theme-name">{theme.toUpperCase()}</span>
+                            <span className="theme-count">{count} mentions</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Clusters Tab - NOW FOURTH */}
+              {activeTab === 'clusters' && (
+                <div className="clusters-section">
+                  <h2>🔍 Feedback Clusters Analysis</h2>
+                  <p className="section-description">
+                    Feedback automatically grouped into {results.cluster_info.n_clusters} semantic clusters based on similarity.
+                  </p>
+                  
+                  <div className="clusters-grid">
+                    {Object.entries(results.cluster_info.cluster_summaries).map(([clusterId, cluster]) => (
+                      <div key={clusterId} className="cluster-card">
+                        <div className="cluster-header">
+                          <h3>Cluster {parseInt(clusterId) + 1}</h3>
+                          <span className="cluster-size">{cluster.size} feedbacks</span>
+                        </div>
+                        <p className="cluster-summary">{cluster.summary}</p>
+                        {cluster.sample_feedback && (
+                          <div className="cluster-sample">
+                            <strong>Sample:</strong> {cluster.sample_feedback.substring(0, 150)}...
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
-            </TabPanel>
+              )}
 
-            {/* Suggestions Tab */}
-            <TabPanel>
-              <div className="analysis-card">
-                <h2>💡 AI-Generated Suggestions</h2>
-                <div className="suggestions-header">
-                  <p>Actionable recommendations based on your feedback analysis</p>
-                </div>
-                <div className="suggestions-grid">
-                  {(results.suggestions || []).map((suggestion, index) => (
-                    <div key={index} className="suggestion-card">
-                      <div className="suggestion-header">
-                        <span className="category-badge">AI Generated</span>
-                        <span className="priority-badge">💡</span>
-                      </div>
-                      <p className="suggestion-text">{suggestion}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </TabPanel>
-
-            {/* AI Analysis Tab */}
-            <TabPanel>
-              <div className="analysis-card">
-                <h2><FaBrain /> Complete AI Analysis</h2>
-                <div className="ai-summary">
-                  {results.summary?.split('\n').map((paragraph, index) => {
-                    if (paragraph.trim().startsWith('##')) {
-                      return <h3 key={index} className="summary-heading">{paragraph.replace('##', '').trim()}</h3>;
-                    } else if (paragraph.trim().startsWith('#')) {
-                      return <h4 key={index} className="summary-subheading">{paragraph.replace('#', '').trim()}</h4>;
-                    } else if (paragraph.trim()) {
-                      return <p key={index} className="summary-paragraph">{paragraph.trim()}</p>;
-                    }
-                    return null;
-                  })}
-                </div>
-              </div>
-            </TabPanel>
-          </Tabs>
-        </div>
-      )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
