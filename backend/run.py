@@ -2,19 +2,37 @@
 Application entry point
 """
 from app import create_app
-import os
+from app.config import Config
+import logging
 
-app = create_app()
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, Config.LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
+logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 8000))
-    debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
-    
-    print(f"🚀 Starting Feedback Analyzer Backend on port {port}")
-    print(f"🔧 Debug mode: {debug}")
-    
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=debug
-    )
+    try:
+        # Validate configuration
+        Config.validate_config()
+        
+        # Log configuration summary (without secrets)
+        logger.info("🚀 Starting Feedback Analyzer Backend")
+        logger.info(f"Configuration: {Config.get_config_summary()}")
+        
+        # Create and run app
+        app = create_app()
+        app.run(
+            host=Config.HOST,
+            port=Config.PORT,
+            debug=Config.DEBUG
+        )
+        
+    except ValueError as e:
+        logger.error(f"Configuration error: {e}")
+        exit(1)
+    except Exception as e:
+        logger.error(f"Failed to start application: {e}")
+        exit(1)

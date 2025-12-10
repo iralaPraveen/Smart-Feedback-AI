@@ -32,7 +32,8 @@ const FeedbackAnalyzer = () => {
     setResults(null);
 
     try {
-      const response = await axios.post('http://localhost:8000/api/analyze-feedback', {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      const response = await axios.post(`${API_URL}/api/analyze-feedback`, {
         spreadsheet_id: formData.spreadsheetId,
         range_name: formData.rangeName
       });
@@ -65,8 +66,8 @@ const FeedbackAnalyzer = () => {
       <div className="container">
         {/* Header */}
         <header className="header">
-          <h1>🤖 AI Feedback Analyzer</h1>
-          <p className="subtitle">Hybrid NLP + AI Analysis System</p>
+          <h1>🤖 SMART FEEDBACK AI</h1>
+          <p className="subtitle">AI Analysis System</p>
         </header>
 
         {/* Input Form */}

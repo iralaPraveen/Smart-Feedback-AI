@@ -1,7 +1,4 @@
 """
-Hybrid AI Service (Without Sentiment Analysis)
-Combines NLP preprocessing, clustering, and Gemini AI summarization
-With detailed, actionable recommendations
 """
 
 import google.generativeai as genai

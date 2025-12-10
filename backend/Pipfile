@@ -12,7 +12,7 @@ google-generativeai = "*"
 pandas = "*"
 python-dotenv = "*"
 logging = "*"
-requests = "*"
+nltk = "*"
 
 [dev-packages]
 
