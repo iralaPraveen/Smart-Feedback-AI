@@ -1,0 +1,27 @@
+
+
+
+# Flask Configuration
+SECRET_KEY=your-super-secret-key-change-this-in-production
+FLASK_ENV=production
+FLASK_DEBUG=False
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+
+# API Keys
+GOOGLE_AI_API_KEY= your_api_key
+GOOGLE_SHEETS_API_KEY= your_api_key
+# Or keep your existing naming (backward compatible):
+# GOOGLE_API_KEY=your_sheets_api_key_here
+
+# AI Model Configuration
+AI_MODEL_NAME=gemini-2.5-flash
+MAX_TOKENS=1000
+
+# CORS Configuration (comma-separated for multiple origins)
+CORS_ORIGINS=http://localhost:3000,http://localhost:80
+
+# Logging
+LOG_LEVEL=INFO
