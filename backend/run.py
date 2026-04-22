@@ -5,6 +5,7 @@ from app import create_app
 from app.config import Config
 import logging
 
+
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, Config.LOG_LEVEL),
